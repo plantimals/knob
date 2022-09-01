@@ -89,8 +89,10 @@ func main() {
 		time.Sleep(10 * time.Second)
 	}
 
+	//setup an channel to feed events
 	events := make(chan *nostr.Event)
-	//process events
+
+	//process events concurrently
 	go func(events chan *nostr.Event) {
 		for evt := range events {
 			evt.PubKey = pub
@@ -109,6 +111,7 @@ func main() {
 			}
 
 			event, statuses, _ := pool.PublishEvent(evt)
+			ShowEvent(event)
 
 			wait := time.Tick(10 * time.Second)
 		forLoop:
@@ -130,7 +133,6 @@ func main() {
 				}
 			}
 
-			ShowEvent(event)
 		}
 
 	}(events)
