@@ -1,1 +1,4 @@
 knob
+*.json
+*.md
+*.txt
