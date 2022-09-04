@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	nostr "github.com/fiatjaf/go-nostr"
@@ -73,7 +74,7 @@ func main() {
 	pool := nostr.NewRelayPool()
 
 	p := &RelayPolicy{
-		Read:  true,
+		Read:  false,
 		Write: true,
 	}
 
@@ -92,8 +93,11 @@ func main() {
 	//setup an channel to feed events
 	events := make(chan *nostr.Event)
 
+	var wg sync.WaitGroup
 	//process events concurrently
+	wg.Add(1)
 	go func(events chan *nostr.Event) {
+		log.Info("top of event loop")
 		for evt := range events {
 			evt.PubKey = pub
 			err = evt.Sign(priv)
@@ -134,6 +138,7 @@ func main() {
 			}
 
 		}
+		wg.Done()
 
 	}(events)
 
@@ -146,9 +151,10 @@ func main() {
 	} else {
 		fmt.Println("no inputs found")
 	}
-	fmt.Println("finished")
 	close(events)
-	time.Sleep(1 * time.Second)
+	fmt.Println("close events and start wg.Wait()")
+	wg.Wait()
+	fmt.Println("closing")
 }
 
 func ShowEvent(evt *nostr.Event) {
