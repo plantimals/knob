@@ -15,6 +15,7 @@ import (
 
 var genkeys, pause bool
 var path, relay, input string
+var waitTime int = 30
 
 func initFlags() {
 	flag.BoolVar(&genkeys, "genkeys", false, "set to generate a new pub/priv key pair")
@@ -56,29 +57,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	for _, event := range events {
-		ShowEvent(event)
-		ctx := context.Background()
-		for _, url := range []string{"wss://relay.damus.io"} {
-			relay, err := nostr.RelayConnect(ctx, url)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			_, err = relay.Publish(ctx, *event)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-			fmt.Printf("published to %s\n", url)
-		}
+	err = PublishEvents(events)
+	if err != nil {
+		panic(err)
 	}
-	time.Sleep(30 * time.Second)
-
-	fmt.Println("close events and start wg.Wait()")
-	fmt.Println("closing")
 }
 
 func ShowEvent(evt *nostr.Event) {
@@ -87,14 +69,19 @@ func ShowEvent(evt *nostr.Event) {
 		panic(err)
 	}
 	fmt.Println(string(b))
+	note := EncodeEvent(evt)
+	fmt.Printf("encoded: %s\n", note)
+}
+
+func EncodeEvent(evt *nostr.Event) string {
 	note, err := nip19.EncodeNote(evt.ID)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("encoded: %s\n", note)
+	return note
 }
 
-func EventsFromJson(path string, pk string) *nostr.Event {
+func EventFromJson(path string, pk string) *nostr.Event {
 	payload, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)
@@ -132,4 +119,32 @@ func FeedEventsFromOpml(path string, priv string, pk string) ([]*nostr.Event, er
 		}
 	}
 	return events, nil
+}
+
+func PublishEvents(events []*nostr.Event) error {
+	notes := make(map[string]int, 0)
+	for _, event := range events {
+		ctx := context.Background()
+		for _, url := range []string{"wss://relay.damus.io"} {
+			relay, err := nostr.RelayConnect(ctx, url)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			_, err = relay.Publish(ctx, *event)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			notes[EncodeEvent(event)] = 1
+			fmt.Printf("published to %s\n", url)
+			fmt.Printf("waiting for %d seconds\n", waitTime)
+			time.Sleep(time.Duration(waitTime) * time.Second)
+		}
+	}
+	fmt.Printf("published %d events\n", len(notes))
+	for note := range notes {
+		fmt.Printf("%s\n", note)
+	}
+	return nil
 }
