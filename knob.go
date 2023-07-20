@@ -26,7 +26,7 @@ func initFlags() {
 	flag.Parse()
 }
 
-func genkeysShow() (string, string) {
+func GenerateKeysShow() (string, string) {
 	priv := nostr.GeneratePrivateKey()
 	pub, err := nostr.GetPublicKey(priv)
 	if err != nil {
@@ -37,12 +37,11 @@ func genkeysShow() (string, string) {
 }
 
 func main() {
-
 	initFlags()
 	var priv, pub string
 	var err error
 	if genkeys {
-		priv, pub = genkeysShow()
+		priv, pub = GenerateKeysShow()
 		if input == "" {
 			os.Exit(0)
 		}
@@ -53,7 +52,11 @@ func main() {
 			panic(err)
 		}
 	}
-	events, err := FeedEventsFromOpml(path, priv, pub)
+	OPML := opml.NewOPMLParser()
+	if err := OPML.Parse(path); err != nil {
+		panic(err)
+	}
+	events, err := OPML.FeedEventsFromOpml(path, priv, pub)
 	if err != nil {
 		panic(err)
 	}
@@ -93,32 +96,6 @@ func EventFromJson(path string, pk string) *nostr.Event {
 	}
 	evt.CreatedAt = nostr.Now()
 	return evt
-}
-
-func FeedEventsFromOpml(path string, priv string, pk string) ([]*nostr.Event, error) {
-	op := opml.NewOPMLParser()
-
-	opml, err := op.Parse(path)
-	if err != nil {
-		return nil, err
-	}
-	var events []*nostr.Event
-	for _, list := range opml.Lists {
-		for _, feed := range list.Feeds {
-			evt := &nostr.Event{
-				Content:   feed.Title,
-				CreatedAt: nostr.Now(),
-				Kind:      1063,
-				PubKey:    pk,
-			}
-			evt.Tags = append(evt.Tags, []string{"url", feed.Url})
-			evt.Tags = append(evt.Tags, []string{"m", "application/rss+xml"})
-			evt.Tags = append(evt.Tags, []string{"link", feed.Link})
-			evt.Sign(priv)
-			events = append(events, evt)
-		}
-	}
-	return events, nil
 }
 
 func PublishEvents(events []*nostr.Event) error {

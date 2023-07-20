@@ -3,6 +3,7 @@ package opml
 import (
 	"encoding/xml"
 
+	"github.com/nbd-wtf/go-nostr"
 	"github.com/plantimals/go-opml/opml"
 )
 
@@ -14,12 +15,14 @@ type OPMLParser struct {
 type Opml struct {
 	Title string `xml:"head>title"`
 	Lists []List `xml:"body>outline"`
+	Event *nostr.Event
 }
 
 type List struct {
 	XMLName xml.Name `xml:"outline"`
 	Title   string   `xml:"title,attr"`
 	Feeds   []Feed   `xml:"body>outline>outline"`
+	Event   *nostr.Event
 }
 
 type Feed struct {
@@ -27,33 +30,22 @@ type Feed struct {
 	Title   string   `xml:"title,attr"`
 	Url     string   `xml:"xmlUrl,attr"`
 	Link    string   `xml:"htmlUrl,attr"`
+	Event   *nostr.Event
 }
 
 func NewOPMLParser() *OPMLParser {
 	return &OPMLParser{}
 }
 
-// func (p *OPMLParser) Parse(path string) (*Opml, error) {
-// 	f, err := os.ReadFile(path)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	p.Path = path
-// 	p.OPML = &Opml{}
-// 	if err := xml.Unmarshal(f, p.OPML); err != nil {
-// 		return nil, err
-// 	}
-// 	return p.OPML, nil
-// }
-
-func (p *OPMLParser) Parse(path string) (*Opml, error) {
+func (p *OPMLParser) Parse(path string) error {
 	doc, err := opml.NewOPMLFromFile(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	answer := &Opml{
 		Title: doc.Head.Title,
 	}
+
 	for _, o := range doc.Body.Outlines {
 		list := List{
 			Title: o.Title,
@@ -67,5 +59,30 @@ func (p *OPMLParser) Parse(path string) (*Opml, error) {
 		}
 		answer.Lists = append(answer.Lists, list)
 	}
-	return answer, nil
+	p.OPML = answer
+	return nil
+}
+
+func (p *OPMLParser) FeedEventsFromOpml(path string, priv string, pk string) ([]*nostr.Event, error) {
+	op := NewOPMLParser()
+	if err := op.Parse(path); err != nil {
+		return nil, err
+	}
+	var events []*nostr.Event
+	for _, list := range p.OPML.Lists {
+		for _, feed := range list.Feeds {
+			evt := &nostr.Event{
+				Content:   feed.Title,
+				CreatedAt: nostr.Now(),
+				Kind:      1063,
+				PubKey:    pk,
+			}
+			evt.Tags = append(evt.Tags, []string{"url", feed.Url})
+			evt.Tags = append(evt.Tags, []string{"m", "application/rss+xml"})
+			evt.Tags = append(evt.Tags, []string{"link", feed.Link})
+			evt.Sign(priv)
+			events = append(events, evt)
+		}
+	}
+	return events, nil
 }
