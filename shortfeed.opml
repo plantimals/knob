@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<opml version="1.0">
+    <head>
+        <title>drss feed</title>
+    </head>
+    <body>
+        <outline text="distributed systems" title="distributed systems">
+            <outline type="rss" text="Tor Project blog" title="Tor Project blog" xmlUrl="https://blog.torproject.org/rss.xml" htmlUrl="https://blog.torproject.org/"/>
+            <outline type="rss" text="IPFS Blog &amp; News" title="IPFS Blog &amp; News" xmlUrl="https://ipfs.io/blog/index.xml" htmlUrl="https://blog.ipfs.tech"/>
+        </outline>
+        <outline text="chess" title="chess">
+            <outline type="rss" text="lichess.org blog" title="lichess.org blog" xmlUrl="http://en.lichess.org/blog.atom" htmlUrl="https://lichess.org/blog"/>
+        </outline>
+    </body>
+</opml>

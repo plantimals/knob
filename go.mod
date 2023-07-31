@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/nbd-wtf/go-nostr v0.19.4
 	github.com/plantimals/go-opml v1.1.0
+	github.com/sirupsen/logrus v1.9.3
 )
 
 require (
